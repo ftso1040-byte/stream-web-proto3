@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ルミック | ストリーム株式会社 Web制作事業</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    
+    <style>
+        /* ==========================================
+           CSS Variables & Reset
+           ========================================== */
+        :root {
+            --bg-color: #FFFFFF;
+            --text-main: #111111;
+            --text-muted: #555555;
+            --accent-blue: #0A3D91;
+            --gray-light: #F5F5F5;
+            --gray-border: #E0E0E0;
+            --font-en: 'Montserrat', sans-serif;
+            --font-jp: 'Noto Sans JP', sans-serif;
+            --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        * { box-sizing: border-box; cursor: none; }
+        
+        body, html {
+            margin: 0; padding: 0;
+            font-family: var(--font-jp);
+            color: var(--text-main);
+            background-color: var(--bg-color);
+            line-height: 1.8;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        body.is-loading { overflow: hidden; }
+
+        h1, h2, h3, h4, p, ul, li { margin: 0; padding: 0; list-style: none; }
+        a { text-decoration: none; color: inherit; }
+
+        .container { max-width: 1280px; margin: 0 auto; padding: 0 6%; }
+        section { padding: 160px 0; position: relative; }
+
+        .section-title {
+            font-family: var(--font-en); font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 900; letter-spacing: -0.02em; margin-bottom: 20px; line-height: 1.1;
+        }
+        .section-subtitle {
+            font-family: var(--font-jp); font-size: 1.1rem; color: var(--accent-blue);
+            font-weight: 700; margin-bottom: 80px; display: block; letter-spacing: 0.05em;
+        }
+
+        /* ==========================================
+           Custom Cursor
+           ========================================== */
+        .cursor-dot, .cursor-outline {
+            position: fixed; top: 0; left: 0; transform: translate(-50%, -50%);
+            border-radius: 50%; z-index: 9999; pointer-events: none;
+        }
+        .cursor-dot { width: 8px; height: 8px; background-color: var(--text-main); }
+        .cursor-outline {
+            width: 40px; height: 40px; border: 1.5px solid rgba(17, 17, 17, 0.4);
+            transition: width 0.3s, height 0.3s, background-color 0.3s, border-color 0.3s;
+        }
+        .cursor-hover .cursor-outline {
+            width: 80px; height: 80px; background-color: rgba(10, 61, 145, 0.08); border-color: var(--accent-blue);
+        }
+
+        .is-night-mode .cursor-dot { background-color: #FFF; }
+        .is-night-mode .cursor-outline { border-color: rgba(255, 255, 255, 0.4); }
+        .is-night-mode .cursor-hover .cursor-outline { background-color: rgba(255, 255, 255, 0.1); border-color: #FFF; }
+
+        /* ==========================================
+           Loading Screen
+           ========================================== */
+        .loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background-color: #000;
+            z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+            will-change: transform;
+            overflow: hidden;
+        }
+        .loader-text {
+            font-family: var(--font-en); font-size: clamp(2.5rem, 6vw, 5rem);
+            font-weight: 900; color: #FFF;
+            letter-spacing: 0.25em;
+            position: relative; z-index: 2; overflow: hidden;
+        }
+        .loader-text span {
+            display: inline-block; transform: translateY(100%); opacity: 0;
+            will-change: transform, opacity;
+        }
+
+        /* ==========================================
+           Global Header
+           ========================================== */
+        .header {
+            position: fixed; top: 0; left: 0; width: 100%;
+            padding: 25px 8%; z-index: 9000;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: background-color 0.4s, padding 0.4s, box-shadow 0.4s, color 0.4s;
+            color: #FFF;
+        }
+        .header.is-scrolled {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            padding: 15px 8%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            color: var(--text-main); 
+        }
+        
+        .logo {
+            font-family: var(--font-jp); font-size: 1.6rem; font-weight: 900;
+            color: inherit; letter-spacing: 0.05em; 
+            text-decoration: none; position: relative;
+            transition: color 0.4s;
+        }
+        
+        /* 修正: ボタンの位置を元の自然な右寄りに戻しました */
+        .header-nav { display: flex; align-items: center; gap: 20px; } 
+        .nav-links { display: flex; gap: 30px; }
+        
+        .nav-links a { 
+            font-family: var(--font-en); font-size: 0.9rem; font-weight: 700; 
+            text-transform: uppercase; letter-spacing: 0.1em; transition: color 0.3s;
+            color: inherit; 
+        }
+        .header:not(.is-scrolled) .nav-links a { color: rgba(255,255,255,0.8); }
+        .header:not(.is-scrolled) .nav-links a:hover { color: #FFF; }
+        .header.is-scrolled .nav-links a:hover { color: var(--accent-blue); }
+        
+        .header-btn {
+            padding: 10px 24px; border-radius: 40px; font-weight: 700; font-size: 0.9rem;
+            transition: transform 0.3s, background-color 0.3s, color 0.3s; display: inline-block;
+            text-align: center; white-space: nowrap; 
+            flex-shrink: 0; 
+        }
+        .header:not(.is-scrolled) .header-btn { 
+            background-color: #FFF; 
+            color: #111111 !important; 
+        }
+        .header:not(.is-scrolled) .header-btn:hover { 
+            background-color: rgba(255,255,255,0.8); transform: translateY(-2px); 
+        }
+        .header.is-scrolled .header-btn { 
+            background-color: #111111; 
+            color: #FFF !important; 
+        }
+        .header.is-scrolled .header-btn:hover { 
+            background-color: #333333; transform: translateY(-2px); 
+        }
+
+        /* ==========================================
+           Hero Section (本物の天の川写真 × Canvas星座)
+           ========================================== */
+        .hero {
+            position: relative; height: 100vh;
+            display: flex; align-items: center; justify-content: flex-start;
+            background-color: #03050C; 
+            overflow: hidden;
+            padding-top: 80px;
+        }
+        
+        .hero-bg {
+            position: absolute; top: -5%; left: -5%; width: 110%; height: 110%;
+            background-image: url('https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=2500&q=80');
+            background-size: cover; background-position: center bottom; 
+            z-index: 0;
+            animation: slowZoomHero 30s linear infinite alternate;
+        }
+        @keyframes slowZoomHero {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        .hero::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(3, 5, 12, 0.7) 0%, rgba(3, 5, 12, 0.4) 100%);
+            z-index: 1;
+        }
+
+        #hero-canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2; pointer-events: auto; 
+        }
+        
+        .hero-content {
+            position: relative; z-index: 10; pointer-events: none; max-width: 900px;
+        }
+        .hero-content h1 {
+            font-size: clamp(3rem, 7vw, 5.5rem); font-weight: 900; letter-spacing: -0.03em; line-height: 1.15;
+            margin-bottom: 30px; color: #FFFFFF; text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        }
+        .hero-content p {
+            font-size: clamp(1rem, 1.8vw, 1.3rem); color: rgba(255,255,255,0.9); font-weight: 500; line-height: 1.9;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        /* ==========================================
+           Vision Section (純白の世界への回帰)
+           ========================================== */
+        .vision-sec { background-color: var(--bg-color); color: var(--text-main); padding: 200px 0; text-align: center; }
+        .vision-sec h3 { font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 700; line-height: 1.5; margin-bottom: 50px; letter-spacing: 0.02em; }
+        .vision-sec p { font-size: 1.1rem; color: var(--text-muted); max-width: 700px; margin: 0 auto 30px auto; line-height: 2; font-weight: 500;}
+        .vision-sec .highlight { color: var(--accent-blue); font-weight: 700; border-bottom: 2px solid var(--accent-blue); padding-bottom: 2px;}
+
+        /* ==========================================
+           Expertise Section
+           ========================================== */
+        .expertise-sec { background-color: var(--bg-color); padding-bottom: 80px; }
+        .expertise-item { display: flex; align-items: stretch; margin-bottom: 150px; min-height: 70vh; }
+        .expertise-item:nth-child(even) { flex-direction: row-reverse; }
+        
+        .ex-text-box { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 5% 8%; }
+        .ex-category { font-family: var(--font-en); font-size: 0.95rem; font-weight: 800; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 20px; display: block; }
+        .ex-text-box h3 { font-size: clamp(2rem, 3.5vw, 2.8rem); font-weight: 900; margin-bottom: 30px; line-height: 1.3; }
+        .ex-text-box p { font-size: 1.05rem; color: var(--text-muted); margin-bottom: 40px; font-weight: 500;}
+        
+        .ex-features { border-top: 1px solid var(--gray-border); padding-top: 30px; }
+        .ex-features li { position: relative; padding-left: 20px; margin-bottom: 15px; font-size: 1rem; font-weight: 700; color: var(--text-main);}
+        .ex-features li::before { content: ''; position: absolute; left: 0; top: 12px; width: 8px; height: 8px; background-color: var(--accent-blue); }
+
+        .ex-img-box { flex: 1.2; position: relative; overflow: hidden; border-radius: 8px; transform: translateZ(0); }
+        .ex-img-inner { width: 100%; height: 120%; background-size: cover; background-position: center; will-change: transform; }
+
+        /* ==========================================
+           Value Section
+           ========================================== */
+        .value-sec { background-color: var(--gray-light); }
+        .value-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 60px; margin-top: 80px; }
+        .value-num { font-family: var(--font-en); font-size: 5rem; font-weight: 900; color: transparent; -webkit-text-stroke: 2px rgba(17, 17, 17, 0.15); line-height: 1; margin-bottom: 20px; }
+        .value-card h4 { font-size: 1.5rem; font-weight: 800; margin-bottom: 20px; border-bottom: 3px solid var(--accent-blue); display: inline-block; padding-bottom: 5px;}
+        .value-card p { font-size: 1.05rem; color: var(--text-muted); line-height: 1.8; font-weight: 500;}
+
+        /* ==========================================
+           Process Section
+           ========================================== */
+        .process-sec { background-color: var(--bg-color); }
+        .process-list { display: flex; flex-direction: column; gap: 40px; max-width: 900px; margin: 0 auto; }
+        .process-item { display: flex; align-items: flex-start; gap: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--gray-border); }
+        .process-item:last-child { border-bottom: none; }
+        .p-step { font-family: var(--font-en); font-size: 1.3rem; font-weight: 900; color: var(--accent-blue); min-width: 100px; }
+        .p-content h4 { font-size: 1.4rem; font-weight: 800; margin-bottom: 15px; }
+        .p-content p { font-size: 1.05rem; color: var(--text-muted); font-weight: 500;}
+
+        /* ==========================================
+           Contact Section & Form
+           ========================================== */
+        .contact-sec { background-color: var(--gray-light); color: var(--text-main); text-align: center; padding: 160px 0; }
+        .contact-title { font-size: clamp(2.5rem, 5vw, 4rem); font-family: var(--font-en); font-weight: 900; margin-bottom: 30px; }
+        .contact-desc { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 60px; font-weight: 500; line-height: 1.8;}
+        
+        .form-wrapper {
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: left;
+            background: #FFF;
+            padding: 50px 60px;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+        }
+        .form-group { margin-bottom: 30px; }
+        .form-group label {
+            display: block; font-weight: 700; margin-bottom: 10px; font-size: 0.95rem;
+        }
+        .form-group .required { color: #E53935; margin-left: 5px; font-size: 0.8rem;}
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 15px; border: 1px solid var(--gray-border);
+            border-radius: 4px; font-family: inherit; font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            background-color: #FAFAFA;
+            color: var(--text-main);
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none; border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(10, 61, 145, 0.1);
+            background-color: #FFF;
+        }
+        .select-wrap { position: relative; }
+        .select-wrap::after {
+            content: '▼'; position: absolute; right: 15px; top: 50%;
+            transform: translateY(-50%); pointer-events: none; font-size: 0.8rem; color: var(--text-muted);
+        }
+        .form-group select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+        
+        .contact-form .btn-main { width: 100%; margin-top: 10px; cursor: pointer; border: none; font-family: inherit;}
+        
+        .btn-main {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 24px 60px; 
+            background-color: #0A3D91 !important; 
+            color: #FFFFFF !important; 
+            font-weight: 800; font-size: 1.2rem; letter-spacing: 0.05em;
+            transition: transform 0.4s var(--ease-out-expo), box-shadow 0.4s;
+            border-radius: 4px;
+        }
+        .btn-main:hover { 
+            background-color: #062863 !important; 
+            transform: translateY(-5px); 
+            box-shadow: 0 15px 30px rgba(10, 61, 145, 0.4); 
+            color: #FFFFFF !important;
+        }
+
+        /* ==========================================
+           Footer
+           ========================================== */
+        .footer {
+            background-color: var(--text-main);
+            padding: 30px 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .footer-text {
+            font-size: 0.85rem;
+            color: #A0A0A0;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+        }
+
+        /* Utilities */
+        .reveal-text { overflow: hidden; }
+        .reveal-text span { display: inline-block; transform: translateY(100%); opacity: 0; }
+        .fade-up { opacity: 0; transform: translateY(50px); }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 992px) {
+            .header-nav { gap: 20px; }
+            .nav-links { display: none; } 
+            .expertise-item, .expertise-item:nth-child(even) { flex-direction: column; min-height: auto; }
+            .ex-img-box { height: 50vh; width: 100%; border-radius: 0; }
+            .ex-text-box { padding: 10% 0; }
+            .cursor-dot, .cursor-outline { display: none !important; }
+            * { cursor: auto !important; }
+            .process-item { flex-direction: column; gap: 20px; }
+            .header-btn { padding: 10px 20px; font-size: 0.85rem; }
+            .form-wrapper { padding: 30px 20px; } 
+        }
+    </style>
+</head>
+<body class="is-loading">
+
+    <div class="loader js-loader">
+        <div class="loader-text">
+            <span class="l-char">L</span><span class="l-char">U</span><span class="l-char">M</span><span class="l-char">I</span><span class="l-char">Q</span>
+        </div>
+    </div>
+
+    <!-- Custom Cursor -->
+    <div class="cursor-dot js-cursor-dot"></div>
+    <div class="cursor-outline js-cursor-outline"></div>
+
+    <!-- Global Header -->
+    <header class="header js-header">
+        <a href="#" class="logo hover-target js-logo-replay">
+            ルミック
+        </a>
+        <div class="header-nav">
+            <nav class="nav-links">
+                <a href="#expertise" class="hover-target js-smooth-scroll">Expertise</a>
+                <a href="#value" class="hover-target js-smooth-scroll">Value</a>
+                <a href="#process" class="hover-target js-smooth-scroll">Process</a>
+            </nav>
+            <a href="#contact" class="header-btn hover-target js-smooth-scroll">ご相談・お問い合わせ</a>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero" id="hero">
+        <div class="hero-bg"></div>
+        <canvas id="hero-canvas"></canvas>
+        <div class="container hero-content">
+            <h1 class="reveal-text"><span class="ht-1">ビジネスの課題を、</span><br><span class="ht-2">デザインと技術で</span><br><span class="ht-3">美しく解決する。</span></h1>
+            <p class="fade-up-delay">ルミックは、最新のAI技術と限界を突破する実装力で、<br>企業のデジタル領域における成長を加速させるWeb制作パートナーです。</p>
+        </div>
+    </section>
+
+    <!-- VISION -->
+    <section class="vision-sec">
+        <div class="container">
+            <h3 class="fade-up">デジタルと経営を、シームレスに繋ぐ。</h3>
+            <p class="fade-up">現代のビジネスにおいて、Webサイトは単なる情報発信の場ではありません。<br>ブランドの価値を高め、顧客体験を最適化し、企業の成長を牽引する<span class="highlight">「事業の核」</span>です。</p>
+            <p class="fade-up">しかし、複雑化するデジタル技術やデザインのトレンドに対し、<br>「どう活用すべきか」と立ち止まる経営者様は少なくありません。</p>
+            <p class="fade-up">私たちは、そんな課題に対する<span class="highlight">「解」</span>を提供します。<br>お客様のビジネスへの熱意と目標を深く理解し、難解な技術や要件を最適なUI/UXへと翻訳。<br>圧倒的なスピードと妥協なきクオリティで、期待を超える成果を創出します。</p>
+        </div>
+    </section>
+
+    <!-- EXPERTISE -->
+    <section id="expertise" class="expertise-sec">
+        <div class="container">
+            <h2 class="section-title fade-up">Expertise</h2>
+            <span class="section-subtitle fade-up">私たちが提供する3つのデザイン領域と品質基準</span>
+
+            <div class="expertise-item">
+                <div class="ex-text-box fade-up">
+                    <span class="ex-category">01 / UI & UX Design</span>
+                    <h3>先進性と直感性が交差する<br>デジタルプロダクト</h3>
+                    <p>SaaSやWebアプリケーションにおいて、ユーザーの直感的な操作を導き、ビジネスのコンバージョンを最大化するUI/UXを設計します。複雑な情報構造を、美しく、ロジカルに整理します。</p>
+                    <ul class="ex-features">
+                        <li>AIによる高速なプロトタイピングと要件定義</li>
+                        <li>WebGL / GSAPを用いた没入感のあるインタラクション</li>
+                        <li>ユーザーの認知負荷を下げる情報設計</li>
+                    </ul>
+                </div>
+                <div class="ex-img-box">
+                    <div class="ex-img-inner js-parallax" style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80');"></div>
+                </div>
+            </div>
+
+            <div class="expertise-item">
+                <div class="ex-text-box fade-up">
+                    <span class="ex-category">02 / Corporate Identity</span>
+                    <h3>企業の圧倒的な信頼感を<br>可視化する</h3>
+                    <p>BtoB企業や製造業における「技術力」と「誠実さ」を、重厚かつ洗練されたビジュアルで表現。ステークホルダーに安心感を与え、採用や取引拡大に直結するコーポレートサイトを構築します。</p>
+                    <ul class="ex-features">
+                        <li>企業のペルソナに基づいた戦略的な訴求軸の策定</li>
+                        <li>ダイナミックなフルウィズレイアウトと撮影ディレクション</li>
+                        <li>信頼性を担保する堅牢なシステム設計</li>
+                    </ul>
+                </div>
+                <div class="ex-img-box">
+                    <div class="ex-img-inner js-parallax" style="background-image: url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=80');"></div>
+                </div>
+            </div>
+
+            <div class="expertise-item">
+                <div class="ex-text-box fade-up">
+                    <span class="ex-category">03 / Brand Experience</span>
+                    <h3>歴史と情緒を紡ぐ、<br>心動かすブランド体験</h3>
+                    <p>地方の伝統産業やBtoCブランドが持つ「想い」や「ストーリー」を、現代的な感性（和モダン等）で再構築。画面越しに温度感や手触りが伝わる、情緒的なWeb表現を提供します。</p>
+                    <ul class="ex-features">
+                        <li>AIを活用した色彩設計と言語化（コピーライティング）</li>
+                        <li>余白とタイポグラフィを活かしたミニマルなデザイン</li>
+                        <li>シームレスな画面遷移と心地よいマイクロインタラクション</li>
+                    </ul>
+                </div>
+                <div class="ex-img-box">
+                    <div class="ex-img-inner js-parallax" style="background-image: url('https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80');"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- VALUE -->
+    <section id="value" class="value-sec">
+        <div class="container">
+            <h2 class="section-title fade-up">Our Value</h2>
+            <span class="section-subtitle fade-up">ルミックが選ばれる理由</span>
+            
+            <div class="value-grid">
+                <div class="value-card fade-up hover-target">
+                    <div class="value-num">01</div>
+                    <h4>AI駆動の圧倒的スピード</h4>
+                    <p>要件定義、構成案の作成、デザインアイデアの創出に最新の生成AIを組み込み、初期フェーズの時間を劇的に短縮。クオリティを一切妥協することなく、最短距離でプロジェクトを前進させます。</p>
+                </div>
+                <div class="value-card fade-up hover-target">
+                    <div class="value-num">02</div>
+                    <h4>限界を突破する実装力</h4>
+                    <p>妥協なきデザインを、寸分違わずWebブラウザ上に再現する高度なフロントエンド技術。GSAPやWebGLを用いた「記憶に残る滑らかなアニメーション」が、当社のスタンダードです。</p>
+                </div>
+                <div class="value-card fade-up hover-target">
+                    <div class="value-num">03</div>
+                    <h4>事業成長への伴走支援</h4>
+                    <p>「作る」ことはゴールではありません。公開後のデータ解析、継続的なUI改善、マーケティング支援まで、お客様の事業成長にコミットする真のパートナーとして末長く伴走します。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROCESS -->
+    <section id="process" class="process-sec">
+        <div class="container">
+            <h2 class="section-title fade-up">Process</h2>
+            <span class="section-subtitle fade-up">プロジェクト進行の流れ</span>
+
+            <div class="process-list">
+                <div class="process-item fade-up hover-target">
+                    <div class="p-step">STEP 01</div>
+                    <div class="p-content">
+                        <h4>戦略ヒアリング</h4>
+                        <p>現状の課題やビジネスの目標を深くヒアリングし、プロジェクトの方向性とKPIを定義します。</p>
+                    </div>
+                </div>
+                <div class="process-item fade-up hover-target">
+                    <div class="p-step">STEP 02</div>
+                    <div class="p-content">
+                        <h4>AIプロトタイピング・要件定義</h4>
+                        <p>AIを活用してサイトの構造（ワイヤーフレーム）を高速に作成。早期に完成イメージをすり合わせます。</p>
+                    </div>
+                </div>
+                <div class="process-item fade-up hover-target">
+                    <div class="p-step">STEP 03</div>
+                    <div class="p-content">
+                        <h4>UI/UXデザイン & フロントエンド実装</h4>
+                        <p>当社のExpertiseを結集し、ハイエンドなデザインと滑らかなインタラクションを実装します。</p>
+                    </div>
+                </div>
+                <div class="process-item fade-up hover-target">
+                    <div class="p-step">STEP 04</div>
+                    <div class="p-content">
+                        <h4>品質検証・ローンチ</h4>
+                        <p>あらゆるデバイスでの厳密なテストを経て、万全の状態でWebサイトを公開いたします。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="contact-sec">
+        <div class="container fade-up">
+            <h2 class="contact-title">Let's create together.</h2>
+            <p class="contact-desc">Webサイトの新規制作、リニューアル、システム開発のご相談など、<br>あなたのビジネスの課題をお聞かせください。</p>
+            
+            <div class="form-wrapper">
+                <!-- ↓↓ action="..." の中に、Formspreeで取得したURLを入れます ↓↓ -->
+                <form action="https://formspree.io/f/xwvrvqkz" method="POST" class="contact-form">
+                    
+                    <div class="form-group">
+                        <label for="name">貴社名 / お名前 <span class="required">*</span></label>
+                        <input type="text" id="name" name="name" required placeholder="例：株式会社ルミック 山田太郎">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">メールアドレス <span class="required">*</span></label>
+                        <input type="email" id="email" name="email" required placeholder="例：info@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="type">ご相談の種別</label>
+                        <div class="select-wrap">
+                            <select id="type" name="type">
+                                <option value="新規サイト制作">新規サイト制作</option>
+                                <option value="サイトリニューアル">サイトリニューアル</option>
+                                <option value="LP制作">LP制作</option>
+                                <option value="システム・アプリ開発">システム・アプリ開発</option>
+                                <option value="その他・相談したい">その他・相談したい</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="message">ご相談内容・現状の課題 <span class="required">*</span></label>
+                        <textarea id="message" name="message" rows="5" required placeholder="具体的なお悩みや、実現したい目標をご記入ください。"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn-main hover-target">送信する</button>
+                </form>
+            </div>
+            
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">運営会社: ストリーム株式会社 &copy; All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- ==========================================
+         Scripts
+         ========================================== -->
+    <script>
+        // --- 1. Canvas Zodiac Animation (背景は写真に任せ、前面の星座のみを描画) ---
+        let isExploding = false;
+        let isCanvasVisible = true; 
+        let globalAngle = 0; 
+        const rotationSpeed = 0.0006; 
+        
+        const canvas = document.getElementById('hero-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, zodiacParticles = [], constellationLines = [], backgroundStars = [];
+        let mouse = { x: null, y: null, radius: 150 };
+
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            if(zodiacParticles.length > 0) window.initParticles();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const heroSection = document.getElementById('hero');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { 
+                isCanvasVisible = entry.isIntersecting;
+                if(entry.isIntersecting) document.body.classList.add('is-night-mode');
+                else document.body.classList.remove('is-night-mode');
+            });
+        }, { threshold: 0.1 });
+        observer.observe(heroSection);
+
+        class ZodiacParticle {
+            constructor(x, y, size, isConstellation = true) {
+                this.x = width / 2;
+                this.y = height / 2;
+                let targetX = x !== undefined ? x : Math.random() * width;
+                let targetY = y !== undefined ? y : Math.random() * height;
+                
+                this.dist = Math.sqrt(Math.pow(targetX - width/2, 2) + Math.pow(targetY - height/2, 2));
+                this.initAngle = Math.atan2(targetY - height/2, targetX - width/2);
+                
+                this.baseX = targetX;
+                this.baseY = targetY;
+                this.size = size !== undefined ? size : Math.random() * 2 + 1;
+                this.density = (Math.random() * 30) + 1;
+                this.isConstellation = isConstellation;
+                
+                if (this.isConstellation) {
+                    this.color = 'rgba(255, 255, 255, 0.9)'; 
+                } else {
+                    let alpha = Math.random() * 0.5 + 0.1;
+                    this.color = `rgba(255, 255, 255, ${alpha})`;
+                }
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+                
+                if (this.isConstellation) {
+                    ctx.fillStyle = 'rgba(150, 200, 255, 0.2)';
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 3.5, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+            update() {
+                this.baseX = width/2 + this.dist * Math.cos(this.initAngle + globalAngle);
+                this.baseY = height/2 + this.dist * Math.sin(this.initAngle + globalAngle);
+
+                if (isExploding) {
+                    let dx = this.baseX - this.x; let dy = this.baseY - this.y;
+                    this.x += dx * 0.05; this.y += dy * 0.05;
+                    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) { isExploding = false; }
+                } else {
+                    let dx = mouse.x - this.x, dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    let forceDirectionX = dx / distance, forceDirectionY = dy / distance;
+                    let maxDistance = mouse.radius, force = (maxDistance - distance) / maxDistance;
+                    let directionX = forceDirectionX * force * this.density, directionY = forceDirectionY * force * this.density;
+
+                    if (distance < mouse.radius) {
+                        this.x -= directionX; this.y -= directionY; 
+                    } else {
+                        if (this.x !== this.baseX) { this.x -= (this.x - this.baseX) / 10; } 
+                        if (this.y !== this.baseY) { this.y -= (this.y - this.baseY) / 10; }
+                    }
+                }
+            }
+        }
+
+        function createConstellation(coords, connections, offsetX, offsetY, scale = 1) {
+            let startIndex = zodiacParticles.length;
+            coords.forEach(c => {
+                let targetX = width / 2 + (c.x * scale) + offsetX;
+                let targetY = height / 2 + (c.y * scale) + offsetY;
+                zodiacParticles.push(new ZodiacParticle(targetX, targetY, c.size, true));
+            });
+            connections.forEach(pair => {
+                constellationLines.push([startIndex + pair[0], startIndex + pair[1]]);
+            });
+        }
+
+        window.initParticles = function() {
+            zodiacParticles = [];
+            constellationLines = [];
+            backgroundStars = [];
+            
+            let minDim = Math.min(width, height);
+            let orbitRadius = minDim * 0.4; 
+            let emptyHoleRadius = minDim * 0.25;
+
+            // 12星座の精緻な座標定義
+            const zodiacs = [
+                { c: [{x:-15,y:5,s:3}, {x:0,y:-5,s:4}, {x:15,y:5,s:3}], l: [[0,1], [1,2]] },
+                { c: [{x:-15,y:-25,s:3}, {x:-5,y:-5,s:3}, {x:5,y:10,s:5}, {x:15,y:-5,s:3}, {x:25,y:-25,s:3}, {x:-25,y:-5,s:4}], l: [[0,1], [1,2], [2,3], [3,4]] },
+                { c: [{x:-15,y:-20,s:5}, {x:-10,y:0,s:3}, {x:-15,y:20,s:4}, {x:5,y:20,s:3}, {x:10,y:-20,s:4}, {x:15,y:0,s:3}, {x:25,y:20,s:3}], l: [[0,1], [1,2], [1,3], [4,5], [5,6], [0,4]] },
+                { c: [{x:0,y:-10,s:3}, {x:5,y:5,s:4}, {x:-15,y:15,s:3}, {x:20,y:20,s:3}], l: [[0,1], [1,2], [1,3]] },
+                { c: [{x:0,y:15,s:5}, {x:-10,y:5,s:3}, {x:-10,y:-10,s:3}, {x:0,y:-15,s:4}, {x:10,y:-5,s:3}, {x:20,y:15,s:3}, {x:30,y:0,s:4}], l: [[0,1], [1,2], [2,3], [3,4], [4,6], [6,5], [5,0], [4,0]] },
+                { c: [{x:0,y:-25,s:3}, {x:-10,y:-10,s:3}, {x:10,y:-10,s:3}, {x:0,y:5,s:4}, {x:20,y:0,s:3}, {x:-20,y:5,s:3}, {x:15,y:20,s:3}, {x:-10,y:25,s:5}], l: [[0,1], [0,2], [1,3], [2,3], [2,4], [1,5], [3,6], [3,7]] },
+                { c: [{x:0,y:-15,s:4}, {x:-15,y:0,s:4}, {x:15,y:0,s:4}, {x:0,y:15,s:3}, {x:-15,y:-15,s:3}, {x:15,y:-15,s:3}], l: [[0,1], [1,3], [3,2], [2,0], [1,4], [2,5]] },
+                { c: [{x:15,y:-20,s:3}, {x:25,y:-15,s:3}, {x:10,y:-10,s:3}, {x:0,y:0,s:5}, {x:-10,y:10,s:3}, {x:-15,y:20,s:4}, {x:-10,y:30,s:3}, {x:0,y:35,s:4}, {x:10,y:30,s:3}], l: [[0,2], [1,2], [2,3], [3,4], [4,5], [5,6], [6,7], [7,8]] },
+                { c: [{x:0,y:-15,s:4}, {x:-15,y:0,s:3}, {x:-5,y:10,s:4}, {x:10,y:10,s:4}, {x:20,y:0,s:3}, {x:0,y:0,s:4}, {x:-20,y:-15,s:3}], l: [[0,1], [1,2], [2,3], [3,4], [4,0], [1,5], [4,5], [0,5], [1,6]] },
+                { c: [{x:-20,y:-15,s:4}, {x:-10,y:-10,s:3}, {x:0,y:15,s:4}, {x:15,y:5,s:3}, {x:25,y:-15,s:4}], l: [[0,1], [1,2], [2,3], [3,4], [0,4]] },
+                { c: [{x:-15,y:-15,s:3}, {x:0,y:-20,s:4}, {x:15,y:-10,s:3}, {x:0,y:0,s:4}, {x:-10,y:10,s:3}, {x:0,y:20,s:3}, {x:-10,y:30,s:4}], l: [[0,1], [1,2], [2,3], [3,0], [3,4], [4,5], [5,6]] },
+                { c: [{x:-20,y:-20,s:4}, {x:-15,y:-15,s:3}, {x:-25,y:-10,s:3}, {x:0,y:15,s:4}, {x:15,y:-5,s:3}, {x:25,y:-15,s:4}, {x:20,y:-25,s:3}], l: [[0,1], [1,2], [2,0], [1,3], [3,4], [4,5], [5,6], [6,4]] }
+            ];
+
+            zodiacs.forEach((zodiac, i) => {
+                let angle = i * (Math.PI * 2 / 12);
+                let offsetX = Math.cos(angle) * orbitRadius;
+                let offsetY = Math.sin(angle) * orbitRadius;
+                createConstellation(zodiac.c, zodiac.l, offsetX, offsetY, 1);
+            });
+
+            // 背景写真と馴染ませるための、星座と一緒に回る細かい星屑
+            let numBgStars = (width * height) / 10000;
+            for (let i = 0; i < numBgStars; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let r = emptyHoleRadius + Math.random() * (Math.max(width, height) - emptyHoleRadius);
+                let tx = width / 2 + Math.cos(angle) * r;
+                let ty = height / 2 + Math.sin(angle) * r;
+                backgroundStars.push(new ZodiacParticle(tx, ty, Math.random() * 1.5 + 0.5, false)); 
+            }
+            
+            isExploding = true;
+            globalAngle = 0; 
+        }
+
+        function drawConstellationLines() {
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'; 
+            constellationLines.forEach(pair => {
+                let p1 = zodiacParticles[pair[0]];
+                let p2 = zodiacParticles[pair[1]];
+                if(p1 && p2) {
+                    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+                }
+            });
+            
+            // 背景の星屑同士も薄く繋ぐ
+            for (let a = 0; a < backgroundStars.length; a++) {
+                for (let b = a + 1; b < backgroundStars.length; b++) {
+                    let p1 = backgroundStars[a];
+                    let p2 = backgroundStars[b];
+                    let dist = (p1.x - p2.x)**2 + (p1.y - p2.y)**2;
+                    if (dist < 10000) {
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - dist/10000) * 0.1})`;
+                        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!isCanvasVisible) return;
+            
+            ctx.clearRect(0, 0, width, height);
+            globalAngle += rotationSpeed; 
+            
+            for (let i = 0; i < backgroundStars.length; i++) { 
+                backgroundStars[i].update(); backgroundStars[i].draw(); 
+            }
+            for (let i = 0; i < zodiacParticles.length; i++) { 
+                zodiacParticles[i].update(); zodiacParticles[i].draw(); 
+            }
+            drawConstellationLines();
+        }
+
+        window.initParticles(); 
+        animate();
+
+
+        // --- 2. Main Interactions (白のローディング ➔ 漆黒の宇宙へ) ---
+        window.addEventListener('DOMContentLoaded', () => {
+            gsap.registerPlugin(ScrollTrigger);
+
+            function playOpeningAnimation() {
+                const tl = gsap.timeline({ onComplete: () => { document.body.classList.remove('is-loading'); } });
+                
+                gsap.set(".l-char", { y: "100%", opacity: 0 });
+                gsap.set(".js-loader", { yPercent: 0 });
+                gsap.set([".ht-1", ".ht-2", ".ht-3"], { y: "100%", opacity: 0 });
+                gsap.set(".fade-up-delay", { y: 50, opacity: 0 });
+
+                tl.to(".l-char", { y: "0%", opacity: 1, duration: 0.6, stagger: 0.1, ease: "power4.out" })
+                  .to(".l-char", { delay: 0.4 }) 
+                  // 🌟 漆黒の幕が開き、天の川の宇宙が現れる
+                  .to(".js-loader", { yPercent: -100, duration: 1.2, ease: "power4.inOut" })
+                  .call(() => { window.initParticles(); }) 
+                  .to([".ht-1", ".ht-2", ".ht-3"], { y: "0%", opacity: 1, duration: 1, stagger: 0.1, ease: "power4.out" }, "-=0.6")
+                  .to(".fade-up-delay", { y: 0, opacity: 1, duration: 1, ease: "power3.out" }, "-=0.6");
+            }
+            playOpeningAnimation();
+
+            const logoBtn = document.querySelector('.js-logo-replay');
+            logoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setTimeout(() => { document.body.classList.add('is-loading'); playOpeningAnimation(); }, 600);
+            });
+
+            document.querySelectorAll('.js-smooth-scroll').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+
+            const cursorDot = document.querySelector('.js-cursor-dot');
+            const cursorOutline = document.querySelector('.js-cursor-outline');
+            const hoverTargets = document.querySelectorAll('.hover-target, a, button');
+            const isTouchDevice = () => ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            
+            if (!isTouchDevice()) {
+                window.addEventListener('mousemove', (e) => {
+                    cursorDot.style.left = `${e.clientX}px`; cursorDot.style.top = `${e.clientY}px`;
+                    gsap.to(cursorOutline, { x: e.clientX, y: e.clientY, duration: 0.15, ease: "power2.out" });
+                });
+                hoverTargets.forEach(target => {
+                    target.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
+                    target.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
+                });
+            }
+
+            const header = document.querySelector('.js-header');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) { header.classList.add('is-scrolled'); } 
+                else { header.classList.remove('is-scrolled'); }
+            });
+
+            gsap.utils.toArray('.fade-up').forEach(element => {
+                gsap.to(element, {
+                    scrollTrigger: { trigger: element, start: "top 90%", toggleActions: "play none none reverse" },
+                    y: 0, opacity: 1, duration: 0.8, ease: "power3.out"
+                });
+            });
+
+            gsap.utils.toArray('.ex-img-box').forEach(box => {
+                const inner = box.querySelector('.ex-img-inner');
+                gsap.to(inner, {
+                    scrollTrigger: { trigger: box, start: "top bottom", end: "bottom top", scrub: true },
+                    y: "20%", ease: "none"
+                });
+            });
+            
+            window.addEventListener('load', () => {
+                ScrollTrigger.refresh();
+            });
+        });
+    </script>
+</body>
+</html>
